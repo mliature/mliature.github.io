@@ -10,6 +10,12 @@
 		<link rel="stylesheet" href="article-figure.css">
 		<link rel="stylesheet" href="article-text.css">
 		<link rel="stylesheet" href="article-share.css">
+		<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
 	</head>
     <body>
 		<article id="header-1">
@@ -23,9 +29,54 @@
 			</p>
 			
 			<figure class="size-4">
-				<img src="theconcourseofbirds.webp">
+				 <canvas id="output"></canvas>
+                    <video id="video" muted="muted" playsinline="" style="-webkit-transform:scaleX(-1);transform:scaleX(-1);;width:auto;height:auto;"></video>
+
+		<script>/*
+const detectorConfig = {modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING};
+
+const video = document.getElementById('video');
+const output = document.getElementById('output');
+let ctx = output.getContext('2d');
+
+
+const constraints = {
+  audio: false,
+  video: true
+};
+
+function handleSuccess(stream) {
+  window.stream = stream; // make stream available to browser console
+  video.srcObject = stream;
+}
+
+function handleError(error) {
+  console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+}
+
+navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+window.requestAnimationFrame(async function(){
+  const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+const poses = await detector.estimatePoses(video);
+  output.width = video.videoWidth;
+  output.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+});
+*/
+let video = document.getElementById('video');
+if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+  console.log("mediaDevices found in navigator.getUserMedia found in mediaDevices")
+}
+async function cameraToVideo (){
+const stream = await navigator.mediaDevices.getUserMedia({video: true});
+video.srcObject = stream;
+}
+video.play()
+cameraToVideo();
+</script>
+
 			</figure>
-			<figcaption><p>The <em>Concourse of bird</em>s</p></figcaption>
+			<figcaption><p>Pose Estimation</p></figcaption>
 
 			<h3>About the project</h3>
 			<p>
