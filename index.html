@@ -79,9 +79,9 @@ async function videoToCanvas(){
 
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
-if( frame%3==0){
+//if( frame%3==0){
  poses = await detector.estimatePoses(video);
-}
+//}
 if (frame<60){
 frame +=1;
 }else{
@@ -92,15 +92,20 @@ frame=0;
     ctx.scale(-1, 1);
     ctx.translate(-canvas.width, 0);
     ctx.drawImage(video, 0, 0);
-for(let i=0;i<16;i++){
+for(let i=5;i<16;i++){
 if (poses[0]){
-ctx.fillStyle = "orange";
-ctx.fillRect(poses[0]['keypoints'][i]['x'],poses[0]['keypoints'][i]['y'],20,20);
+ctx.globalAlpha = 0.5;
+ctx.fillStyle = "rgb(255,255,255)";
+ctx.beginPath();
+ctx.arc(poses[0]['keypoints'][i]['x'],poses[0]['keypoints'][i]['y'],8,0,2*Math.PI);
+ctx.fill()
+
 }
+console.log(poses[0]);
+
 }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-console.log();
 
 requestAnimationFrame(videoToCanvas);
 }
