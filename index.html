@@ -30,7 +30,7 @@
 			
 			<figure class="size-4">
 				 <canvas id="canvas"></canvas>
-                    <video id="video" muted="muted" playsinline="" style="transform:scaleX(-1);width:auto;height:auto;"></video>
+                    <video id="video" muted="muted" playsinline="" style="transform:scaleX(-1);visibility:hidden;width:auto;height:auto;"></video>
 			</figure>
 			<figcaption><p>Pose Estimation</p></figcaption>
 
@@ -49,42 +49,69 @@
     </body>
 
 		<script>/*
-const detectorConfig = {modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING};
 
 const video = document.getElementById('video');
 
 window.requestAnimationFrame(async function(){
-  const detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
-const poses = await detector.estimatePoses(video);
+  
   output.width = video.videoWidth;
   output.height = video.videoHeight;
   ctx.drawImage(video, 0, 0);
 });
 */
+const detectorConfig = {modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING};
+let detector;
+
+
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-
+let frame = 0;
 const ctx = canvas.getContext('2d');
 if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
   console.log("mediaDevices found in navigator.getUserMedia found in mediaDevices")
 }
 async function cameraToVideo (){
 const stream = await navigator.mediaDevices.getUserMedia({video: true});
+let poses;
 video.srcObject = stream;
 }
 async function videoToCanvas(){
+
 canvas.width = video.videoWidth;
 canvas.height = video.videoHeight;
+if( frame%3==0){
+ poses = await detector.estimatePoses(video);
+}
+if (frame<60){
+frame +=1;
+}else{
+frame=0;
+}
+
    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(-1, 1);
     ctx.translate(-canvas.width, 0);
     ctx.drawImage(video, 0, 0);
+for(let i=0;i<16;i++){
+if (poses[0]){
+ctx.fillStyle = "orange";
+ctx.fillRect(poses[0]['keypoints'][i]['x'],poses[0]['keypoints'][i]['y'],20,20);
+}
+}
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+console.log();
+
 requestAnimationFrame(videoToCanvas);
+}
+async function initialise(){
+detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+requestAnimationFrame(videoToCanvas);
+
 }
 video.play()
 cameraToVideo();
-requestAnimationFrame(videoToCanvas);
+initialise();
 </script>
 
 </html>
