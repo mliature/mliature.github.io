@@ -1,144 +1,187 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="UTF-8">
-		<title>MLiature</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,400i,500,500i,700,700i,900,900i">
-        <link rel="stylesheet" href="reset.css">
-		<link rel="stylesheet" href="article.css">
-		<link rel="stylesheet" href="article-figure.css">
-		<link rel="stylesheet" href="article-text.css">
-		<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <title>Squat Counter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,400i,500,500i,700,700i,900,900i">
+    <link rel="stylesheet" href="reset.css">
+    <link rel="stylesheet" href="article.css">
+    <link rel="stylesheet" href="article-figure.css">
+    <link rel="stylesheet" href="article-text.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+</head>
+<body>
+    <article id="header-1">
+        <h1><a>This site showcases <em>Capstone Project</em> for the subject <em>Artificial Intelligence</em></a></h1>
+        <h2>Session 2024-25</h2>
+        <time datetime="2024-07-12">JULY 12, 2024</time>
+        <p>
+            Project by Tejas, Akshay, Shreya, Satvik, Sparsh, and Prince.<br>
+            Class 12 C2
+        </p>
+        
+        <figure id="container" style="display: flex;">
+            <canvas id="canvas" width="640" height="480"></canvas>
+            <video id="video" muted playsinline style="visibility: hidden; width: 0; height: 0;"></video>
+        </figure>
+        <figcaption><p>Pose Estimation</p></figcaption>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+        <h3>About the project</h3>
+        <p>
+            This project showcases a Squat Counter.A squat is only registeresd when the knee keypoints of the pose move below the hip keypoints.This method has been used as training another neural network for Pose Classification is resource intensive.
+<br>
+            This project is backed by a real-time pose estimation model trained by Google called MoveNet Lightning.
+        </p>
+        <footer>
+            <p><a href="logbook.docx">See the project logbook</a></p>
+            <p>Team Email: <a href="mailto:mliatureaiprojecttps@gmail.com">mliatureaiprojecttps@gmail.com</a></p>
+        </footer>
+    </article>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let frame = 0;
+        let poses = [];
+        let squatCounter = 0;
+        let isSquatting = false;
+        let wasSquatting = false;
+        const confidenceThreshold = 0.15;
+	let times = [];
+	let fps =0;
+        const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+        let detector;
 
-	</head>
-    <body>
-		<article id="header-1">
-			<h1><a>This site showcases The <em>AI Capstone Project</em></a></h1>
-			<h2>Session 2024-25</h2>
-
-			<time datetime="12-07-2024">JULY. 12, 2024</time>
-			<p>
-				By Tejas,Akshay,Shreya,Satvik,Sparsh and Prince.<br>
-				Class  12 C2
-			</p>
-			
-			<figure id="container" style=" 
-	display: flex;
-">
-				 <canvas id="canvas" width="640" height="480" ></canvas>
-                    <video id="video" muted="muted" playsinline="" style="transform:scaleX(-1);visibility:hidden;width:0;height:0"></video>
-
-			</figure>
-			<figcaption><p>Pose Estimation</p></figcaption>
-
-			<h3>About the project</h3>
-			<p>
-				MLiature is a portmanteau of Machine Learning(ML) and Miniature paintings(-iature).
-				The project symbolizes the rich cultural heritage of India
-				in the aspect of art.<br>
-				It is backed by a realtime pose estimation model trained by google,MoveNet Lightning.
-			</p>
-			<footer>
-			  <p><a href="logbook.docx">See the project logbook</a></p>
-			  <p>Team Email: <a href="mailto:mliatureaiprojecttps@gmail.com">mliatureaiprojecttps@gmail.com</a></p>
-			</footer>
-		</article>
-    </body>
+            let lastTime = performance.now();
 
 
-		<script>
-//TODO--Increase confidence threshold
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-let frame = 0;
-const ctx = canvas.getContext('2d');
-if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
-  console.log("mediaDevices found in navigator.getUserMedia found in mediaDevices")
+        async function cameraToVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                video.addEventListener('canplay', initialise);
+            } catch (err) {
+                console.error('Error accessing the camera: ', err);
+            }
+        }
+
+        async function videoToCanvas() {
+	const now = performance.now();
+            if (frame % 3 === 0) {
+                poses = await detector.estimatePoses(video, { flipHorizontal: false });
+            }
+            frame = (frame + 1) % 60;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(-1, 1); // Flip the canvas horizontally
+            ctx.translate(-canvas.width, 0); // Move the canvas back into the view
+            ctx.globalAlpha = 1.0;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            if (poses[0]) {
+                drawKeypointsAndSkeleton(poses[0].keypoints);
+                detectSquat(poses[0].keypoints);
+            }
+while(times.length>0 && times[0]<=now-1000){
+times.shift();
 }
 
-const detectorConfig = {modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING};
-let detector;
+times.push(now);
+fps = times.length;
+                ctx.font = "30px Arial";
+                ctx.fillStyle = "yellow";
+ctx.strokeStyle = 'yellow';
+ctx.strokeWidth = 8;
+	ctx.globalAlpha = 1.0;
+                ctx.fillText(`Squats: ${squatCounter}`, 10, 70);
+                ctx.fillText(`FPS (Frame): ${fps}`, 10, 30);
+console.log(fps);
+	ctx.strokeRect(2,2,636,476);
+            requestAnimationFrame(videoToCanvas);
+        }
 
-async function cameraToVideo (){
-const stream = await navigator.mediaDevices.getUserMedia({video: true});
-video.srcObject = stream;
-}
+        async function initialise() {
+            detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+            video.play();
+            requestAnimationFrame(videoToCanvas);
+        }
 
-async function videoToCanvas(){
+        function drawKeypointsAndSkeleton(keypoints) {
+            keypoints.forEach(keypoint => {
+                if (keypoint.score >= confidenceThreshold) {
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = "rgb(255,255,255)";
+                    ctx.beginPath();
+                    ctx.arc(canvas.width - keypoint.x, keypoint.y, 8, 0, 2 * Math.PI); // Adjust the x-coordinate
+                    ctx.fill();
+                }
+            });
 
-if( frame%3==0){
- poses = await detector.estimatePoses(video,{flipHorizontal:true});
-}
+            ctx.strokeStyle = "rgb(255,255,255)";
+            drawLine("left_shoulder", "right_shoulder", keypoints);
+            drawLine("left_shoulder", "left_hip", keypoints);
+            drawLine("right_shoulder", "right_hip", keypoints);
+            drawLine("right_hip", "left_hip", keypoints);
+            drawLine("left_shoulder", "left_elbow", keypoints);
+            drawLine("left_elbow", "left_wrist", keypoints);
+            drawLine("right_shoulder", "right_elbow", keypoints);
+            drawLine("right_elbow", "right_wrist", keypoints);
+            drawLine("left_hip", "left_knee", keypoints);
+            drawLine("left_knee", "left_ankle", keypoints);
+            drawLine("right_hip", "right_knee", keypoints);
+            drawLine("right_knee", "right_ankle", keypoints);
+            drawLine("left_hip", "right_hip", keypoints);
+            ctx.stroke();
+        }
 
-if (frame<60){
-frame +=1;
-}else{
-frame=0;
-}
+        function drawLine(a_p1, a_p2, keypoints) {
+            let p1 = getPoint(a_p1, keypoints);
+            let p2 = getPoint(a_p2, keypoints);
+            if (p1 && p2) {
+                ctx.lineWidth = 4;
+                ctx.moveTo(canvas.width - p1.x, p1.y); // Adjust the x-coordinate
+                ctx.lineTo(canvas.width - p2.x, p2.y); // Adjust the x-coordinate
+            }
+        }
 
-   ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(-1, 1);
-    ctx.translate(-canvas.width, 0);
-ctx.globalAlpha = 1.0;
+        function getPoint(name, keypoints) {
+            return keypoints.find(point => point.name === name && point.score >= confidenceThreshold);
+        }
 
-    ctx.drawImage(video, 0, 0);
-if (poses[0]){
-for(let i=5;i<16;i++){
-ctx.globalAlpha = 0.5;
-ctx.fillStyle = "rgb(255,255,255)";
-ctx.beginPath();
-ctx.arc(poses[0]['keypoints'][i]['x'],poses[0]['keypoints'][i]['y'],8,0,2*Math.PI);
-ctx.fill();
-console.log(poses[0].keypoints);
-}
-ctx.strokeStyle = "rgb(255,255,255)";
-drawLine("left_shoulder","right_shoulder");
-drawLine("left_shoulder","left_hip");
-ctx.strokeStyle = "rgb(255,255,255)";
-drawLine("right_shoulder","right_hip");
-drawLine("right_hip","right_hip");
-drawLine("left_shoulder","left_elbow");
-drawLine("left_elbow","left_wrist");
-drawLine("right_shoulder","right_elbow");
-drawLine("right_elbow","right_wrist");
+        function detectSquat(keypoints) {
+            const leftHip = getPoint('left_hip', keypoints);
+            const rightHip = getPoint('right_hip', keypoints);
+            const leftKnee = getPoint('left_knee', keypoints);
+            const rightKnee = getPoint('right_knee', keypoints);
 
-drawLine("left_hip","left_knee");
-drawLine("left_knee","left_ankle");
-drawLine("right_hip","right_knee");
-drawLine("right_knee","right_ankle");
-drawLine("left_hip","right_hip");
-ctx.stroke();
-}
-ctx.setTransform(1, 0, 0, 1, 0, 0);
-requestAnimationFrame(videoToCanvas);
-}
-async function initialise(){
-detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
-requestAnimationFrame(videoToCanvas);
-}
-function drawLine(a_p1,a_p2){
-let p1 =  getPoint(a_p1);
-let p2 = getPoint(a_p2);
-if( p1 && p2){
-ctx.lineWidth = 4;
-ctx.moveTo(p1.x,p1.y);
-ctx.lineTo(p2.x,p2.y);
-}
+            if (leftHip && rightHip && leftKnee && rightKnee) {
+                const hipAverageY = (leftHip.y + rightHip.y) / 2;
+                const kneeAverageY = (leftKnee.y + rightKnee.y) / 2;
 
-}
-function getPoint(k){
-let n = poses[0].keypoints.find(point=>point.name===k);
-return n;
-}
-video.play()
-cameraToVideo();
-initialise();
-</script>
+                wasSquatting = isSquatting;
 
+                // Consider the user squatting if hips are below knees
+                if (hipAverageY > kneeAverageY) {
+                    isSquatting = true;
+                } else {
+                    isSquatting = false;
+                }
+
+                // Increment counter if the user was squatting and now stands up
+                if (wasSquatting && !isSquatting) {
+                    squatCounter++;
+                }
+            }
+        }
+
+        cameraToVideo();
+    </script>
+</body>
 </html>
